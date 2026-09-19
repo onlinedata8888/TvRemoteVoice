@@ -1,0 +1,134 @@
+// Schema reverse-engineered from the Android TV Remote Service v2 protocol
+// (the same protocol the official Google TV mobile app uses over TLS on
+// port 6466). Trimmed to the messages this app actually needs.
+syntax = "proto3";
+package remote;
+option optimize_for = LITE_RUNTIME;
+option java_package = "com.tvremote.app.proto.remote";
+option java_multiple_files = true;
+
+enum RemoteKeyCode {
+  KEYCODE_UNKNOWN = 0;
+  KEYCODE_HOME = 3;
+  KEYCODE_BACK = 4;
+  KEYCODE_DPAD_UP = 19;
+  KEYCODE_DPAD_DOWN = 20;
+  KEYCODE_DPAD_LEFT = 21;
+  KEYCODE_DPAD_RIGHT = 22;
+  KEYCODE_DPAD_CENTER = 23;
+  KEYCODE_VOLUME_UP = 24;
+  KEYCODE_VOLUME_DOWN = 25;
+  KEYCODE_POWER = 26;
+  KEYCODE_ENTER = 66;
+  KEYCODE_MENU = 82;
+  KEYCODE_SEARCH = 84;
+  KEYCODE_MEDIA_PLAY_PAUSE = 85;
+  KEYCODE_VOLUME_MUTE = 164;
+  KEYCODE_SETTINGS = 176;
+  KEYCODE_APP_SWITCH = 187;
+  KEYCODE_ASSIST = 219;
+  KEYCODE_VOICE_ASSIST = 231;
+}
+
+enum RemoteDirection {
+  UNKNOWN_DIRECTION = 0;
+  START_LONG = 1;
+  END_LONG = 2;
+  SHORT = 3;
+}
+
+message RemoteKeyInject {
+  RemoteKeyCode key_code = 1;
+  RemoteDirection direction = 2;
+}
+
+message RemotePingRequest {
+  int32 val1 = 1;
+  int32 val2 = 2;
+}
+
+message RemotePingResponse {
+  int32 val1 = 1;
+}
+
+message RemoteSetActive {
+  int32 active = 1;
+}
+
+message RemoteDeviceInfo {
+  string model = 1;
+  string vendor = 2;
+  int32 unknown1 = 3;
+  string unknown2 = 4;
+  string package_name = 5;
+  string app_version = 6;
+}
+
+message RemoteConfigure {
+  int32 code1 = 1;
+  RemoteDeviceInfo device_info = 2;
+}
+
+// Sent BY THE TV, unsolicited, on connect and after every single volume
+// change — no matter whether the change came from this app, the plastic
+// remote, or the TV's own menu. volume_level / volume_max are the real
+// numbers the TV's on-screen bar is showing, which is why this message is
+// the only trustworthy source of "what is the volume right now".
+message RemoteSetVolumeLevel {
+  uint32 unknown1 = 1;
+  uint32 unknown2 = 2;
+  string player_model = 3;
+  uint32 unknown4 = 4;
+  uint32 unknown5 = 5;
+  uint32 volume_max = 6;
+  uint32 volume_level = 7;
+  bool volume_muted = 8;
+}
+
+// Sent by the TV once the remote session is fully up and accepting keys.
+message RemoteStart {
+  bool started = 1;
+}
+
+message RemoteError {
+  bool value = 1;
+  RemoteMessage message = 2;
+}
+
+// --- Voice search ---------------------------------------------------------
+// Flow: we press KEYCODE_SEARCH -> the TV answers with a RemoteVoiceBegin
+// carrying a session_id (and the package that will handle the audio) -> we
+// echo RemoteVoiceBegin back with just that session_id -> we stream raw
+// PCM 16-bit mono 8 kHz samples in RemoteVoicePayload chunks -> RemoteVoiceEnd.
+message RemoteVoiceBegin {
+  int32 session_id = 1;
+  string package_name = 2;
+}
+
+message RemoteVoicePayload {
+  int32 session_id = 1;
+  bytes samples = 2;
+}
+
+message RemoteVoiceEnd {
+  int32 session_id = 1;
+}
+
+message RemoteAppLinkLaunchRequest {
+  string app_link = 1;
+}
+
+message RemoteMessage {
+  RemoteConfigure remote_configure = 1;
+  RemoteSetActive remote_set_active = 2;
+  RemoteError remote_error = 3;
+  RemotePingRequest remote_ping_request = 8;
+  RemotePingResponse remote_ping_response = 9;
+  RemoteKeyInject remote_key_inject = 10;
+  RemoteVoiceBegin remote_voice_begin = 30;
+  RemoteVoicePayload remote_voice_payload = 31;
+  RemoteVoiceEnd remote_voice_end = 32;
+  RemoteStart remote_start = 40;
+  RemoteSetVolumeLevel remote_set_volume_level = 50;
+  RemoteAppLinkLaunchRequest remote_app_link_launch_request = 90;
+}
